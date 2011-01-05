@@ -1,4 +1,4 @@
-(ns fogus.me.keepsake)
+(ns fogus.keepsake)
 
 (defprotocol CacheProtocol
   (lookup  [cache e])

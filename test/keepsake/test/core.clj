@@ -1,6 +1,7 @@
 (ns keepsake.test.core
-  (:use [keepsake.core] :reload-all)
-  (:use [clojure.test]))
+  (:use [fogus.keepsake] :reload-all)
+  (:use [clojure.test])
+  (:import [fogus.keepsake BasicCache]))
 
-(deftest replace-me ;; FIXME: write
-  (is false "No tests have been written."))
+(deftest test-lookup
+  (is (= :robot (lookup (miss (BasicCache. {}) '(servo) :robot) '(servo)))))
