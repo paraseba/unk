@@ -18,7 +18,11 @@
   Object
   (toString [_] (str cache)))
 
-(defn through [cache f item]
+(defn basic-cache
+  [& kvs]
+  (BasicCache. (apply hash-map kvs)))
+
+(defn- through [cache f item]
   (if (has? cache item)
     (hit cache item)
     (miss cache item (delay (apply f item)))))
