@@ -18,21 +18,19 @@
   Object
   (toString [_] (str cache)))
 
-(defprotocol MemoizationProtocol
-  (through [cache e]))
+(defn through [cache f item]
+  (if (has? cache item)
+    (hit cache item)
+    (miss cache item (delay (apply f item)))))
 
 (deftype PluggableMemoization [f cache]
   CacheProtocol
+  (has? [_ item] (has? cache item))
   (hit  [this item] this)
   (miss [_ item result]
     (PluggableMemoization. f (miss cache item result)))
   (lookup [_ item]
     (lookup cache item))
-  MemoizationProtocol
-  (through [this item]
-    (if (has? cache item)
-      (hit this item)
-      (miss this item (delay (apply f item)))))
   Object
   (toString [_] (str cache)))
 
@@ -42,11 +40,14 @@
      (let [cache (atom (cache-factory f))]
        (with-meta
         (fn [& args] 
-          (let [cs (swap! cache through args)]
+          (let [cs (swap! cache through f args)]
             @(lookup cs args)))
         {:cache cache}))))
 
 (comment
+  (def cache (BasicCache. {}))
+  (lookup (miss cache '(servo) :robot) '(servo))
+  
   (def slowly (fn [x] (Thread/sleep 3000) x))
   (def sometimes-slowly (memo slowly))
 
