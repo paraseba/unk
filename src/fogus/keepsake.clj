@@ -1,6 +1,19 @@
-(ns fogus.keepsake)
+(ns fogus.keepsake
+  "Keepsake is a memoization library offering functionality above Clojure's core `memoize`
+   function in the following ways:
+
+   - Pluggable memoization
+   - Clearable memoization cache
+
+   ## Pluggable memoization
+
+   Keepsake allows for different back-end cache implmentations to be used as appropriate without
+   changing the memoization modus operandi.
+  "
+  {:author "Fogus"})
 
 (defprotocol CacheProtocol
+  "This is the protocol describing the basic cache capability."
   (lookup  [cache e])
   (has?    [cache e] )
   (hit     [cache e])
