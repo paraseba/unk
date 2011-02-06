@@ -1,5 +1,5 @@
-(ns fogus.keepsake
-  "Keepsake is a memoization library offering functionality above Clojure's core `memoize`
+(ns fogus.anamnesis
+  "Anamnesis is a memoization library offering functionality above Clojure's core `memoize`
    function in the following ways:
 
    - Pluggable memoization
@@ -7,7 +7,7 @@
 
    ## Pluggable memoization
 
-   Keepsake allows for different back-end cache implmentations to be used as appropriate without
+   Anamnesis allows for different back-end cache implmentations to be used as appropriate without
    changing the memoization modus operandi.
   "
   {:author "Fogus"})
