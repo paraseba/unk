@@ -15,7 +15,7 @@
 (defprotocol CacheProtocol
   "This is the protocol describing the basic cache capability."
   (lookup  [cache e])
-  (has?    [cache e] )
+  (has?    [cache e])
   (hit     [cache e])
   (miss    [cache e ret]))
 
@@ -31,7 +31,7 @@
   Object
   (toString [_] (str cache)))
 
-(defn basic-cache
+(defn- basic-cache
   [& kvs]
   (BasicCache. (apply hash-map kvs)))
 
@@ -51,8 +51,10 @@
   Object
   (toString [_] (str cache)))
 
+;; # Public API
+
 (defn memo
-  ([f] (memo #(PluggableMemoization. % (BasicCache. {})) f))
+  ([f] (memo #(PluggableMemoization. % (basic-cache)) f))
   ([cache-factory f]
      (let [cache (atom (cache-factory f))]
        (with-meta
@@ -62,7 +64,7 @@
         {:cache cache}))))
 
 (comment
-  (def cache (BasicCache. {}))
+  (def cache (basic-cache))
   (lookup (miss cache '(servo) :robot) '(servo))
   
   (def slowly (fn [x] (Thread/sleep 3000) x))
