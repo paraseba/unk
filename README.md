@@ -1,4 +1,4 @@
-# Anamnesis
+# keepsake
 
 A memoization framework for Clojure
 
