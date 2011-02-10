@@ -14,10 +14,16 @@
 
 (defprotocol CacheProtocol
   "This is the protocol describing the basic cache capability."
-  (lookup  [cache e])
-  (has?    [cache e])
-  (hit     [cache e])
-  (miss    [cache e ret]))
+  (lookup  [cache e]
+   "Retrieve the value associated with `e` if it exists")
+  (has?    [cache e]
+   "Checks if the cache contains a value associtaed with `e`")
+  (hit     [cache e]
+   "Is meant to be called if the cache is determined to contain a value
+   associated with `e`")
+  (miss    [cache e ret]
+   "Is meant to be called if the cache is determined to **not** contain a
+   value associated with `e`"))
 
 (deftype BasicCache [cache]
   CacheProtocol
