@@ -1,7 +1,7 @@
-(ns keepsake.test.core
-  (:use [fogus.keepsake] :reload-all)
+(ns unk.test.core
+  (:use [fogus.unk] :reload-all)
   (:use [clojure.test])
-  (:import [fogus.keepsake BasicCache]))
+  (:import [fogus.unk BasicCache]))
 
 (deftest test-lookup
   (is (= :robot (lookup (miss (BasicCache. {}) '(servo) :robot) '(servo)))))

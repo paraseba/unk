@@ -1,16 +1,21 @@
-(ns fogus.keepsake
-  "keepsake is a memoization library offering functionality above Clojure's core `memoize`
+(ns fogus.unk
+  "unk is a memoization library offering functionality above Clojure's core `memoize`
    function in the following ways:
 
    - Pluggable memoization
-   - Clearable memoization cache
+   - Manipulable memoization cache
 
    ## Pluggable memoization
 
-   keepsake allows for different back-end cache implmentations to be used as appropriate without
+   unk allows for different back-end cache implmentations to be used as appropriate without
    changing the memoization modus operandi.
+
+   ## Manipulable memoization
+
+   Because unk allows you to access a function's memoization store, you do interesting things like
+   clear it, modify it, and save it for later.
   "
-  {:author "Fogus"})
+  {:author "fogus"})
 
 (defprotocol CacheProtocol
   "This is the protocol describing the basic cache capability."
