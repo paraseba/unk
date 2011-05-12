@@ -112,10 +112,14 @@
   (when-let [cache (:unk (meta memoized-fn))]
     (.cache (.cache @cache))))
 
-(defn has-cache?
+(defn memoized?
   "Returns true if a function has an unk-placed cache, false otherwise."
   [f]
   (boolean (:unk (meta f))))
+
+(def ^{:private true
+       :doc "Returns a function's cache identity."}
+  cache-id #(:unk (meta %)))
 
 (defn clear-cache!
   "Reaches into an unk-memoized function and clears the cache.  This is a
@@ -126,9 +130,8 @@
    cool though, we've learned to deal with that stuff in Clojure by
    now."
   [f]
-  (when (has-cache? f)
-    (when-let [cache  (:unk (meta f))]
-      (swap! cache (constantly (clear @cache))))))
+  (when-let [cache (cache-id f)]
+    (swap! cache (constantly (clear @cache)))))
 
 (comment
   (def cache (basic-cache))

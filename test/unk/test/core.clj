@@ -11,7 +11,7 @@
 (deftest test-cache-innards
   (let [CACHE_IDENTITY (:unk (meta id))]
     (testing "That an unk-populated function looks correct at its inception"
-      (is (has-cache? id))
+      (is (memoized? id))
       (is (snapshot id))
       (is (empty? (snapshot id))))
     (testing "That an unk-populated function looks correct after some interactions"
