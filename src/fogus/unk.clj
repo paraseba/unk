@@ -121,7 +121,7 @@
        :doc "Returns a function's cache identity."}
   cache-id #(:unk (meta %)))
 
-(defn clear-cache!
+(defn memo-clear!
   "Reaches into an unk-memoized function and clears the cache.  This is a
    destructive operation and should be used with care.
 
@@ -133,20 +133,4 @@
   (when-let [cache (cache-id f)]
     (swap! cache (constantly (clear @cache)))))
 
-(comment
-  (def cache (basic-cache))
-  (lookup (miss cache '(servo) :robot) '(servo))
-  
-  (def slowly (fn [x] (Thread/sleep 3000) x))
-  (def sometimes-slowly (memo slowly))
 
-  (time [(sometimes-slowly 108) (sometimes-slowly 108)])
-  ; "Elapsed time: 3001.611 msecs"
-  ;=> [108 108]
-
-  (time [(sometimes-slowly 108) (sometimes-slowly 108)])
-  ; "Elapsed time: 0.049 msecs"
-  ;=> [108 108]
-
-  @(:unk (meta sometimes-slowly))
-)

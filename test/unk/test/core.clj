@@ -29,7 +29,7 @@
         (is (find (snapshot id) '([])))
         (is (= 2 (count (snapshot id)))))
       (testing "if clearing the cache works as expected"
-        (is (clear-cache! id))
+        (is (memo-clear! id))
         (is (empty? (snapshot id)))))
     (testing "that after all manipulations, the cache maintains its identity"
       (is (identical? CACHE_IDENTITY (:unk (meta id)))))))
