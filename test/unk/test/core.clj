@@ -8,7 +8,7 @@
 
 (def id (memo identity))
 
-(deftest test-cache-innards
+(deftest test-memoization-utils
   (let [CACHE_IDENTITY (:unk (meta id))]
     (testing "That an unk-populated function looks correct at its inception"
       (is (memoized? id))
@@ -32,5 +32,11 @@
         (is (memo-clear! id))
         (is (empty? (snapshot id)))))
     (testing "that after all manipulations, the cache maintains its identity"
-      (is (identical? CACHE_IDENTITY (:unk (meta id)))))))
+      (is (identical? CACHE_IDENTITY (:unk (meta id)))))
+    (testing "that a cache can be seeded and used normally"
+      (is (memo-swap! id {[42] 42}))
+      (is (= 42 (id 42)))
+      (is (= {[42] 42} (snapshot id)))
+      (is (= 108 (id 108)))
+      (is (= {[42] 42 [108] 108} (snapshot id))))))
 

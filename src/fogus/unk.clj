@@ -29,6 +29,8 @@
   "
   {:author "fogus"})
 
+;; # Protocols and Types
+
 (defprotocol CacheProtocol
   "This is the protocol describing the basic cache capability."
   (lookup  [cache e]
@@ -41,9 +43,9 @@
   (miss    [cache e ret]
    "Is meant to be called if the cache is determined to **not** contain a
    value associated with `e`")
-  (clear   [cache]
-   "Is used to signal that the cache should be cleared of all elements.
-   The contract is that said cache should return an empty instance of its
+  (seed    [cache sd]
+   "Is used to signal that the cache should be created with a seed.
+   The contract is that said cache should return an instance of its
    own type."))
 
 (deftype BasicCache [cache]
@@ -55,19 +57,10 @@
   (hit [this item] this)
   (miss [_ item result]
     (BasicCache. (assoc cache item result)))
-  (clear [_]
-    (BasicCache. {}))
+  (seed [_ sd]
+    (BasicCache. sd))
   Object
   (toString [_] (str cache)))
-
-(defn- basic-cache
-  [& kvs]
-  (BasicCache. (apply hash-map kvs)))
-
-(defn- through [cache f item]
-  (if (has? cache item)
-    (hit cache item)
-    (miss cache item (delay (apply f item)))))
 
 (deftype PluggableMemoization [f cache]
   CacheProtocol
@@ -77,12 +70,79 @@
     (PluggableMemoization. f (miss cache item result)))
   (lookup [_ item]
     (lookup cache item))
-  (clear [_]
-    (PluggableMemoization. f (clear cache)))
+  (seed [_ sd]
+    (PluggableMemoization. f (seed cache sd)))
   Object
   (toString [_] (str cache)))
 
-;; # Public API
+
+;; # Auxilliary functions
+
+(defn- basic-cache
+  ([m] (BasicCache. m))
+  ([k v & kvs]
+     (BasicCache. (apply hash-map k v kvs))))
+
+(defn- through [cache f item]
+  (if (has? cache item)
+    (hit cache item)
+    (miss cache item (delay (apply f item)))))
+
+(def ^{:private true
+       :doc "Returns a function's cache identity."}
+  cache-id #(:unk (meta %)))
+
+;; # Public Utilities API
+
+(defn snapshot
+  "Returns a snapshot of an unk-placed memoization cache.  By snapshot
+   you can infer that what you get is only the cache contents at a
+   moment in time."
+  [memoized-fn]
+  (when-let [cache (:unk (meta memoized-fn))]
+    (into {}
+          (for [[k v] (.cache (.cache @cache))]
+            [(vec k) @v]))))
+
+(defn memoized?
+  "Returns true if a function has an unk-placed cache, false otherwise."
+  [f]
+  (boolean (:unk (meta f))))
+
+(defn memo-clear!
+  "Reaches into an unk-memoized function and clears the cache.  This is a
+   destructive operation and should be used with care.
+
+   Keep in mind that depending on what other threads or doing, an
+   immediate call to `snapshot` may not yield an empty cache.  That's
+   cool though, we've learned to deal with that stuff in Clojure by
+   now."
+  [f]
+  (when-let [cache (cache-id f)]
+    (swap! cache (constantly (seed @cache {})))))
+
+(defn memo-swap!
+  "Takes an unk-populated function and a map and replaces the memoization cache
+   with the supplied map.  This is potentially some serious voodoo,
+   since you can effectively change the semantics of a function on the fly.
+
+       (def id (memo identity))
+       (memo-swap! id '{[13] :omg})
+       (id 13)
+       ;=> :omg
+
+   With great power comes ... yadda yadda yadda."
+  [f sd]
+  (when-let [cache (cache-id f)]
+    (swap! cache
+           (constantly (seed @cache
+                             (into {}
+                                   (for [[k v] sd]
+                                     [k (reify
+                                          clojure.lang.IDeref
+                                          (deref [this] v))])))))))
+
+;; # Public memoization API
 
 (defn memo
   "Used as a more flexible alternative to Clojure's core `memoization`
@@ -95,42 +155,11 @@
    on the memoized function's metadata.  However, it is advised to
    use the unk primitives instead as implementation details may
    change over time."
-  ([f] (memo #(PluggableMemoization. % (basic-cache)) f))
+  ([f] (memo #(PluggableMemoization. % (basic-cache %2)) f))
   ([cache-factory f]
-     (let [cache (atom (cache-factory f))]
+     (let [cache (atom (cache-factory f {}))]
        (with-meta
         (fn [& args] 
           (let [cs (swap! cache through f args)]
             @(lookup cs args)))
         {:unk cache}))))
-
-(defn snapshot
-  "Returns a snapshot of an unk-placed memoization cache.  By snapshot
-   you can infer that what you get is only the cache contents at a
-   moment in time."
-  [memoized-fn]
-  (when-let [cache (:unk (meta memoized-fn))]
-    (.cache (.cache @cache))))
-
-(defn memoized?
-  "Returns true if a function has an unk-placed cache, false otherwise."
-  [f]
-  (boolean (:unk (meta f))))
-
-(def ^{:private true
-       :doc "Returns a function's cache identity."}
-  cache-id #(:unk (meta %)))
-
-(defn memo-clear!
-  "Reaches into an unk-memoized function and clears the cache.  This is a
-   destructive operation and should be used with care.
-
-   Keep in mind that depending on what other threads or doing, an
-   immediate call to `snapshot` may not yield an empty cache.  That's
-   cool though, we've learned to deal with that stuff in Clojure by
-   now."
-  [f]
-  (when-let [cache (cache-id f)]
-    (swap! cache (constantly (clear @cache)))))
-
-
