@@ -38,5 +38,10 @@
       (is (= 42 (id 42)))
       (is (= {[42] 42} (snapshot id)))
       (is (= 108 (id 108)))
-      (is (= {[42] 42 [108] 108} (snapshot id))))))
+      (is (= {[42] 42 [108] 108} (snapshot id))))
+    (testing "that we can get back the original function"
+      (is (memo-clear! id))
+      (is (memo-swap! id {[42] 24}))
+      (is 24 (id 42))
+      (is 42 ((memo-unwrap id) 42)))))
 

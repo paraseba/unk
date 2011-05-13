@@ -142,6 +142,10 @@
                                           clojure.lang.IDeref
                                           (deref [this] v))])))))))
 
+(defn memo-unwrap
+  [f]
+  (:unk-orig (meta f)))
+
 ;; # Public memoization API
 
 (defn memo
@@ -162,4 +166,5 @@
         (fn [& args] 
           (let [cs (swap! cache through f args)]
             @(lookup cs args)))
-        {:unk cache}))))
+        {:unk cache
+         :unk-orig f}))))
