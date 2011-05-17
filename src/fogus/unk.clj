@@ -62,6 +62,27 @@
   Object
   (toString [_] (str cache)))
 
+(deftype FifoCache [cache q limit]
+  CacheProtocol
+  (lookup [_ item]
+    (get cache item))
+  (has? [_ item]
+    (contains? cache item))
+  (hit [this item]
+    this)
+  (miss [_ item result]
+    (let [k (peek q)]
+      (FifoCache. (-> cache (dissoc k) (assoc item result))
+                  (-> q pop (conj item))
+                  limit)))
+  (seed [_ sd]
+    (FifoCache. sd
+                (into clojure.lang.PersistentQueue/EMPTY
+                      (repeat limit :dummy))
+                limit))
+  ;; TODO add toString
+  )
+
 (deftype PluggableMemoization [f cache]
   CacheProtocol
   (has? [_ item] (has? cache item))
@@ -82,6 +103,12 @@
   ([m] (BasicCache. m))
   ([k v & kvs]
      (BasicCache. (apply hash-map k v kvs))))
+
+(defn- fifo-cache
+  [limit]
+  (FifoCache. {}
+              clojure.lang.PersistentQueue/EMPTY
+              limit))
 
 (defn- through [cache f item]
   (if (has? cache item)
@@ -162,6 +189,27 @@
   ([f] (memo #(PluggableMemoization. % (basic-cache %2)) f))
   ([cache-factory f]
      (let [cache (atom (cache-factory f {}))]
+       (with-meta
+        (fn [& args] 
+          (let [cs (swap! cache through f args)]
+            @(lookup cs args)))
+        {:unk cache
+         :unk-orig f}))))
+
+(defn memo-fifo
+  "Used as a more flexible alternative to Clojure's core `memoization`
+   function.  Memoized functions built using `memo` will respond to
+   the core unk manipulable memoization utilities.  As a nice bonus,
+   you can use `memo` in place of `memoize` without any additional
+   changes.
+
+   You can access the memoization cache directly via the `:unk` key
+   on the memoized function's metadata.  However, it is advised to
+   use the unk primitives instead as implementation details may
+   change over time."
+  ([f limit] (memo #(PluggableMemoization. %1 (seed (fifo-cache %3) %2)) f))
+  ([cache-factory f limit]
+     (let [cache (atom (cache-factory f {} limit))]
        (with-meta
         (fn [& args] 
           (let [cs (swap! cache through f args)]
