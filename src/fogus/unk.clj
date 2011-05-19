@@ -175,6 +175,16 @@
 
 ;; # Public memoization API
 
+(defn build-memoizer
+  ([cache-factory f & args]
+     (let [cache (atom (apply cache-factory f args))]
+       (with-meta
+        (fn [& args] 
+          (let [cs (swap! cache through f args)]
+            @(lookup cs args)))
+        {:unk cache
+         :unk-orig f}))))
+
 (defn memo
   "Used as a more flexible alternative to Clojure's core `memoization`
    function.  Memoized functions built using `memo` will respond to
@@ -182,19 +192,21 @@
    you can use `memo` in place of `memoize` without any additional
    changes.
 
+   The default way to use this function is to simply apply a function
+   that will be memoized.  Additionally, you may also supply a map
+   of the form `'{[42] 42, [108] 108}` where keys are a vector 
+   mapping expected argument values to arity positions.  The map values
+   are the return values of the memoized function.
+
    You can access the memoization cache directly via the `:unk` key
    on the memoized function's metadata.  However, it is advised to
    use the unk primitives instead as implementation details may
    change over time."
-  ([f] (memo #(PluggableMemoization. % (basic-cache %2)) f))
-  ([cache-factory f]
-     (let [cache (atom (cache-factory f {}))]
-       (with-meta
-        (fn [& args] 
-          (let [cs (swap! cache through f args)]
-            @(lookup cs args)))
-        {:unk cache
-         :unk-orig f}))))
+  ([f] (memo f {}))
+  ([f seed]
+     (build-memoizer
+      #(PluggableMemoization. % (basic-cache seed))
+      f)))
 
 (defn memo-fifo
   "Used as a more flexible alternative to Clojure's core `memoization`
