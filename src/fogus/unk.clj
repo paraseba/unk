@@ -78,10 +78,16 @@
   (seed [_ sd]
     (FifoCache. sd
                 (into clojure.lang.PersistentQueue/EMPTY
-                      (repeat limit :dummy))
+                      (repeat limit :free))
                 limit))
-  ;; TODO add toString
-  )
+  Object
+  (toString [_]
+    (str cache \, \space (pr-str q))))
+
+(defmethod print-method clojure.lang.PersistentQueue [q, w]
+  (print-method '<- w)
+  (print-method (seq q) w)
+  (print-method '-< w))
 
 (deftype PluggableMemoization [f cache]
   CacheProtocol
