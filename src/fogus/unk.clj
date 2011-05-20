@@ -209,22 +209,30 @@
       f)))
 
 (defn memo-fifo
-  "Used as a more flexible alternative to Clojure's core `memoization`
-   function.  Memoized functions built using `memo` will respond to
-   the core unk manipulable memoization utilities.  As a nice bonus,
-   you can use `memo` in place of `memoize` without any additional
-   changes.
+  "Works the same as the basic memoization function (i.e. `memo` and `core.memoize` except
+   when a given threshold is breached.  Observe the following:
 
-   You can access the memoization cache directly via the `:unk` key
-   on the memoized function's metadata.  However, it is advised to
-   use the unk primitives instead as implementation details may
-   change over time."
-  ([f limit] (memo #(PluggableMemoization. %1 (seed (fifo-cache %3) %2)) f))
-  ([cache-factory f limit]
-     (let [cache (atom (cache-factory f {} limit))]
-       (with-meta
-        (fn [& args] 
-          (let [cs (swap! cache through f args)]
-            @(lookup cs args)))
-        {:unk cache
-         :unk-orig f}))))
+    (def id (memo-fifo identity 2))
+    
+    (id 42)
+    (id 43)
+    (snapshot id)
+    ;=> {[42] 42, [43] 43}
+
+   As you see, the limit of `2` has not been breached yet, but if you call again with another
+   value, then it will:
+
+    (id 44)
+    (snapshot id)
+    ;=> {[44] 44, [43] 43}
+
+   That is, the oldest entry is pushed out of the memoization cache.  This is the standard
+   **F**irst **I**n **F**irst **O**ut behavior."
+  ([f] (memo-fifo f 5 {}))
+  ([f limit] (memo-fifo f limit {}))
+  ([f limit sd]
+     (build-memoizer
+      #(PluggableMemoization. % (seed (fifo-cache %2) %3))
+      f
+      limit
+      sd)))
