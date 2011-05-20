@@ -3,10 +3,30 @@
   (:use [clojure.test])
   (:import [fogus.unk BasicCache]))
 
-(deftest test-lookup
-  (is (= :robot (lookup (miss (BasicCache. {}) '(servo) :robot) '(servo)))))
+(deftest test-basic-cache-lookup
+  (testing "that the BasicCache can lookup as expected"
+    (is (= :robot (lookup (miss (BasicCache. {}) '(servo) :robot) '(servo))))))
 
 (def id (memo identity))
+
+(deftest test-memo
+  (let [mine (memo identity)
+        them (memoize identity)]
+    (testing "That the memo function works the same as core.memoize"
+      (are [x y] =
+           (mine 42) (them 42)
+           (mine ()) (them ())
+           (mine []) (them [])
+           (mine #{}) (them #{})
+           (mine {}) (them {})
+           (mine nil) (them nil)))
+    (testing "That the memo function has a proper cache"
+      (is (memoized? mine))
+      (is (not (memoized? them)))
+      (is (= 42 (mine 42)))
+      (is (not (empty? (snapshot mine))))
+      (is (memo-clear! mine))
+      (is (empty? (snapshot mine))))))
 
 (deftest test-memoization-utils
   (let [CACHE_IDENTITY (:unk (meta id))]
