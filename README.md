@@ -2,6 +2,10 @@
 
 A pluggable, manipulable memoization framework for Clojure.
 
+# credits
+
+unk is inspired by section 12.4 in *[The Joy of Clojure](http://joyofclojure.com)* which is in turn inspired by the [memoization philosophy](http://kotka.de/blog/2010/03/memoize_done_right.html) espoused by [Christophe Grand](http://clj-me.cgrand.net/), Eugen Dück, and [Meikel Brandmeyer](http://kotka.de/).  In addition, I would like to thank [Chas Emerick](http://cemerick.com/) for his [memoization based on SoftReferences](https://gist.github.com/747395).
+
 License
 -------
 
