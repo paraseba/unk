@@ -89,6 +89,52 @@
   (print-method (seq q) w)
   (print-method '-< w))
 
+(deftype LRUCache [cache lru tick]
+  CacheProtocol
+  (lookup [_ item])
+  (has? [_ item])
+  (hit [_ item])
+  (miss [_ item result])
+  (seed [_ sd])
+  
+  ;; TODO toString
+  )
+
+(deftype TTLCache [cache ttl limit]
+  CacheProtocol
+  (lookup [_ item])
+  (has? [_ item])
+  (hit [_ item])
+  (miss [_ item result])
+  (seed [_ sd])
+  
+  ;; TODO toString
+  )
+
+(deftype LUCache [cache lu]
+  CacheProtocol
+  (lookup [_ item])
+  (has? [_ item])
+  (hit [_ item])
+  (miss [_ item result])
+  (seed [_ sd])
+  
+  ;; TODO toString
+  )
+
+(deftype SoftCache [cache]
+  CacheProtocol
+  (lookup [_ item])
+  (has? [_ item])
+  (hit [_ item])
+  (miss [_ item result])
+  (seed [_ sd])
+  
+  ;; TODO toString
+  )
+
+;; # Plugging framework
+
 (deftype PluggableMemoization [f cache]
   CacheProtocol
   (has? [_ item] (has? cache item))
