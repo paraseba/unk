@@ -9,8 +9,9 @@
 
 (def id (memo identity))
 
-(deftest test-memo
-  (let [mine (memo identity)
+(defn- test-type-transparency
+  [factory]
+  (let [mine (factory identity)
         them (memoize identity)]
     (testing "That the memo function works the same as core.memoize"
       (are [x y] =
@@ -28,32 +29,25 @@
       (is (memo-clear! mine))
       (is (empty? (snapshot mine))))))
 
+(deftest test-memo
+  (test-type-transparency memo))
+
 (deftest test-memo-fifo
-  (let [mine (memo-fifo identity 2)
-        them (memoize identity)]
-    (testing "That the memo-fifo function works the same as core.memoize"
-      (are [x y] =
-           (mine 42) (them 42)
-           (mine ()) (them ())
-           (mine []) (them [])
-           (mine #{}) (them #{})
-           (mine {}) (them {})
-           (mine nil) (them nil)))
-    (testing "That the memo-fifo function has a proper cache"
-      (is (memoized? mine))
-      (is (not (memoized? them)))
-      (testing "that when the limit threshold is not breached, the cache works like the basic version"
-        (is (= 42 (mine 42)))
-        (is (= {[42] 42} (snapshot mine)))
-        (is (= 43 (mine 43)))
-        (is (= {[42] 42, [43] 43} (snapshot mine)))
-        (is (= 42 (mine 42)))
-        (is (= {[42] 42, [43] 43} (snapshot mine))))
-      (testing "that when the limit is breached, the oldest value is dropped"
-        (is (= 44 (mine 44)))
-        (is (= {[44] 44, [43] 43} (snapshot mine))))
-      (is (memo-clear! mine))
-      (is (empty? (snapshot mine))))))
+  (let [mine (memo-fifo identity 2)]
+    ;; First check that the basic memo behavior holds
+    (test-type-transparency #(memo-fifo % 2))
+
+    ;; Now check FIFO-specific behavior
+    (testing "that when the limit threshold is not breached, the cache works like the basic version"
+      (is (= 42 (mine 42)))
+      (is (= {[42] 42} (snapshot mine)))
+      (is (= 43 (mine 43)))
+      (is (= {[42] 42, [43] 43} (snapshot mine)))
+      (is (= 42 (mine 42)))
+      (is (= {[42] 42, [43] 43} (snapshot mine))))
+    (testing "that when the limit is breached, the oldest value is dropped"
+      (is (= 44 (mine 44)))
+      (is (= {[44] 44, [43] 43} (snapshot mine))))))
 
 (deftest test-memoization-utils
   (let [CACHE_IDENTITY (:unk (meta id))]
