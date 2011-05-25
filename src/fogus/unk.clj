@@ -138,8 +138,9 @@
   (seed [_ sd]
     (TTLCache. {} {} limit))
   
-  ;; TODO toString
-  )
+  Object
+  (toString [_]
+    (str cache \, \space ttl \, \space limit)))
 
 (defn- dissoc-dead
   [state now]
