@@ -113,20 +113,43 @@
                (into {} (for [x (range (- limit) 0)] [x x]))
                0
                limit))
+  Object
+  (toString [_]
+    (str cache \, \space lru \, \space tick \, \space limit)))
+
+(declare dissoc-dead)
+
+(deftype TTLCache [cache ttl limit]
+  CacheProtocol
+  (lookup [_ item]
+    (get cache item))
+  (has? [_ item]
+    (when-let [t (get ttl item)]
+      (< (- (System/currentTimeMillis)
+            t)
+         limit)))
+  (hit [this item] this)
+  (miss [this item result]
+    (let [now  (System/currentTimeMillis)
+          this (dissoc-dead this now)]
+      (TTLCache. (assoc (:cache this) item result)
+                 (assoc (:ttl this) item now)
+                 limit)))
+  (seed [_ sd]
+    (TTLCache. {} {} limit))
   
   ;; TODO toString
   )
 
-(deftype TTLCache [cache ttl limit]
-  CacheProtocol
-  (lookup [_ item])
-  (has? [_ item])
-  (hit [_ item])
-  (miss [_ item result])
-  (seed [_ sd])
-  
-  ;; TODO toString
-  )
+(defn- dissoc-dead
+  [state now]
+  (let [ks (map key (filter #(> (- now (val %)) (:limit state))
+                            (:ttl state)))
+        dissoc-ks #(apply dissoc % ks)]
+    (TTLCache. (dissoc-ks (:cache state))
+               (dissoc-ks (:ttl state))
+               (:limit state))))
+
 
 (deftype LUCache [cache lu]
   CacheProtocol
@@ -182,6 +205,10 @@
 (defn- lru-cache
   [limit]
   (LRUCache. {} {} 0 limit))
+
+(defn- ttl-cache
+  [limit]
+  (TTLCache. {} {} limit))
 
 (defn- through [cache f item]
   (if (has? cache item)
@@ -320,3 +347,12 @@
       f
       limit
       sd)))
+
+(defn memo-ttl
+  ([f] (memo-ttl f 3000 {}))
+  ([f limit] (memo-ttl f limit {}))
+  ([f limit sd]
+     (build-memoizer
+      #(PluggableMemoization. % (ttl-cache %2))
+      f
+      limit)))
