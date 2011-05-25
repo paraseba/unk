@@ -89,13 +89,30 @@
   (print-method (seq q) w)
   (print-method '-< w))
 
-(deftype LRUCache [cache lru tick]
+(deftype LRUCache [cache lru tick limit]
   CacheProtocol
-  (lookup [_ item])
-  (has? [_ item])
-  (hit [_ item])
-  (miss [_ item result])
-  (seed [_ sd])
+  (lookup [_ item]
+    (get cache item))
+  (has? [_ item]
+    (contains? cache item))
+  (hit [_ item]
+    (let [tick+ (inc tick)]
+      (LRUCache. cache
+                 (assoc lru item tick+)
+                 tick+
+                 limit)))
+  (miss [_ item result]
+    (let [tick+ (inc tick)
+          k (apply min-key lru (keys lru))]
+      (LRUCache. (-> cache (dissoc k) (assoc item result))
+                 (-> lru (dissoc k) (assoc item tick+))
+                 tick+
+                 limit)))
+  (seed [_ sd]
+    (LRUCache. sd
+               (into {} (for [x (range (- limit) 0)] [x x]))
+               0
+               limit))
   
   ;; TODO toString
   )
@@ -161,6 +178,10 @@
   (FifoCache. {}
               clojure.lang.PersistentQueue/EMPTY
               limit))
+
+(defn- lru-cache
+  [limit]
+  (LRUCache. {} {} 0 limit))
 
 (defn- through [cache f item]
   (if (has? cache item)
@@ -285,6 +306,17 @@
   ([f limit sd]
      (build-memoizer
       #(PluggableMemoization. % (seed (fifo-cache %2) %3))
+      f
+      limit
+      sd)))
+
+(defn memo-lru
+  ""
+  ([f] (memo-lru f 5))
+  ([f limit] (memo-lru f limit {}))
+  ([f limit sd]
+     (build-memoizer
+      #(PluggableMemoization. % (seed (lru-cache %2) %3))
       f
       limit
       sd)))

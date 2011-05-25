@@ -35,7 +35,7 @@
 (deftest test-memo-fifo
   (let [mine (memo-fifo identity 2)]
     ;; First check that the basic memo behavior holds
-    (test-type-transparency #(memo-fifo % 2))
+    (test-type-transparency #(memo-fifo % 10))
 
     ;; Now check FIFO-specific behavior
     (testing "that when the limit threshold is not breached, the cache works like the basic version"
@@ -48,6 +48,9 @@
     (testing "that when the limit is breached, the oldest value is dropped"
       (is (= 44 (mine 44)))
       (is (= {[44] 44, [43] 43} (snapshot mine))))))
+
+(deftest test-memo-lru
+  (test-type-transparency #(memo-lru % 10)))
 
 (deftest test-memoization-utils
   (let [CACHE_IDENTITY (:unk (meta id))]
