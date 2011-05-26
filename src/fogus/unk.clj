@@ -62,7 +62,7 @@
   Object
   (toString [_] (str cache)))
 
-(deftype FifoCache [cache q limit]
+(deftype FIFOCache [cache q limit]
   CacheProtocol
   (lookup [_ item]
     (get cache item))
@@ -72,11 +72,11 @@
     this)
   (miss [_ item result]
     (let [k (peek q)]
-      (FifoCache. (-> cache (dissoc k) (assoc item result))
+      (FIFOCache. (-> cache (dissoc k) (assoc item result))
                   (-> q pop (conj item))
                   limit)))
   (seed [_ sd]
-    (FifoCache. sd
+    (FIFOCache. sd
                 (into clojure.lang.PersistentQueue/EMPTY
                       (repeat limit :free))
                 limit))
@@ -174,6 +174,7 @@
   ;; TODO toString
   )
 
+
 ;; # Plugging framework
 
 (deftype PluggableMemoization [f cache]
@@ -190,26 +191,30 @@
   (toString [_] (str cache)))
 
 
+;; # Factories
+
+(def ^:private basic-cache-factory
+  (fn
+    [f sd]
+    (PluggableMemoization. f (BasicCache. sd))))
+
+(def ^:private fifo-cache-factory
+  (fn
+    [f limit sd]
+    (PluggableMemoization. f (seed (FIFOCache. {} clojure.lang.PersistentQueue/EMPTY limit) sd))))
+
+(def ^:private lru-cache-factory
+  (fn
+    [f limit sd]
+    (PluggableMemoization. f (seed (LRUCache. {} {} 0 limit) sd))))
+
+(def ^:private ttl-cache-factory
+  (fn
+    [f limit]
+    (PluggableMemoization. f (TTLCache. {} {} limit))))
+
+
 ;; # Auxilliary functions
-
-(defn- basic-cache
-  ([m] (BasicCache. m))
-  ([k v & kvs]
-     (BasicCache. (apply hash-map k v kvs))))
-
-(defn- fifo-cache
-  [limit]
-  (FifoCache. {}
-              clojure.lang.PersistentQueue/EMPTY
-              limit))
-
-(defn- lru-cache
-  [limit]
-  (LRUCache. {} {} 0 limit))
-
-(defn- ttl-cache
-  [limit]
-  (TTLCache. {} {} limit))
 
 (defn- through [cache f item]
   (if (has? cache item)
@@ -219,6 +224,7 @@
 (def ^{:private true
        :doc "Returns a function's cache identity."}
   cache-id #(:unk (meta %)))
+
 
 ;; # Public Utilities API
 
@@ -306,8 +312,9 @@
   ([f] (memo f {}))
   ([f seed]
      (build-memoizer
-      #(PluggableMemoization. % (basic-cache seed))
-      f)))
+       basic-cache-factory
+       f
+       seed)))
 
 (defn memo-fifo
   "Works the same as the basic memoization function (i.e. `memo` and `core.memoize` except
@@ -333,10 +340,10 @@
   ([f limit] (memo-fifo f limit {}))
   ([f limit sd]
      (build-memoizer
-      #(PluggableMemoization. % (seed (fifo-cache %2) %3))
-      f
-      limit
-      sd)))
+       fifo-cache-factory
+       f
+       limit
+       sd)))
 
 (defn memo-lru
   ""
@@ -344,16 +351,17 @@
   ([f limit] (memo-lru f limit {}))
   ([f limit sd]
      (build-memoizer
-      #(PluggableMemoization. % (seed (lru-cache %2) %3))
-      f
-      limit
-      sd)))
+       lru-cache-factory
+       f
+       limit
+       sd)))
 
 (defn memo-ttl
+  ""
   ([f] (memo-ttl f 3000 {}))
   ([f limit] (memo-ttl f limit {}))
   ([f limit sd]
      (build-memoizer
-      #(PluggableMemoization. % (ttl-cache %2))
-      f
-      limit)))
+       ttl-cache-factory
+       f
+       limit)))
