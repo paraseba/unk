@@ -1,6 +1,6 @@
 ;; unk.clj -- A pluggable, manipulable memoization library for Clojure
 
-;; by Michael Fogus - <http://fogus.me/fun/trammel>
+;; by Michael Fogus - <http://fogus.me/fun/unk>
 ;; Feb. 2011
 
 ; Copyright (c) Michael Fogus, 2011. All rights reserved.  The use
@@ -193,25 +193,25 @@
 
 ;; # Factories
 
-(def ^:private basic-cache-factory
-  (fn
-    [f sd]
-    (PluggableMemoization. f (BasicCache. sd))))
+(defn- basic-cache-factory
+  ""
+  [f sd]
+  (PluggableMemoization. f (BasicCache. sd)))
 
-(def ^:private fifo-cache-factory
-  (fn
-    [f limit sd]
-    (PluggableMemoization. f (seed (FIFOCache. {} clojure.lang.PersistentQueue/EMPTY limit) sd))))
+(defn- fifo-cache-factory
+  ""
+  [f limit sd]
+  (PluggableMemoization. f (seed (FIFOCache. {} clojure.lang.PersistentQueue/EMPTY limit) sd)))
 
-(def ^:private lru-cache-factory
-  (fn
-    [f limit sd]
-    (PluggableMemoization. f (seed (LRUCache. {} {} 0 limit) sd))))
+(defn- lru-cache-factory
+  ""
+  [f limit sd]
+  (PluggableMemoization. f (seed (LRUCache. {} {} 0 limit) sd)))
 
-(def ^:private ttl-cache-factory
-  (fn
-    [f limit]
-    (PluggableMemoization. f (TTLCache. {} {} limit))))
+(defn- ttl-cache-factory
+  ""
+  [f limit]
+  (PluggableMemoization. f (TTLCache. {} {} limit)))
 
 
 ;; # Auxilliary functions
