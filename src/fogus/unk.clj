@@ -43,7 +43,7 @@
   (miss    [cache e ret]
    "Is meant to be called if the cache is determined to **not** contain a
    value associated with `e`")
-  (seed    [cache sd]
+  (seed    [cache base]
    "Is used to signal that the cache should be created with a seed.
    The contract is that said cache should return an instance of its
    own type."))
@@ -57,8 +57,8 @@
   (hit [this item] this)
   (miss [_ item result]
     (BasicCache. (assoc cache item result)))
-  (seed [_ sd]
-    (BasicCache. sd))
+  (seed [_ base]
+    (BasicCache. base))
   Object
   (toString [_] (str cache)))
 
@@ -75,8 +75,8 @@
       (FIFOCache. (-> cache (dissoc k) (assoc item result))
                   (-> q pop (conj item))
                   limit)))
-  (seed [_ sd]
-    (FIFOCache. sd
+  (seed [_ base]
+    (FIFOCache. base
                 (into clojure.lang.PersistentQueue/EMPTY
                       (repeat limit :free))
                 limit))
@@ -108,8 +108,8 @@
                  (-> lru (dissoc k) (assoc item tick+))
                  tick+
                  limit)))
-  (seed [_ sd]
-    (LRUCache. sd
+  (seed [_ base]
+    (LRUCache. base
                (into {} (for [x (range (- limit) 0)] [x x]))
                0
                limit))
@@ -135,7 +135,7 @@
       (TTLCache. (assoc (:cache this) item result)
                  (assoc (:ttl this) item now)
                  limit)))
-  (seed [_ sd]
+  (seed [_ base]
     (TTLCache. {} {} limit))
   
   Object
@@ -165,8 +165,8 @@
       (LUCache. (-> cache (dissoc k) (assoc item result))
                 (-> lu (dissoc k) (assoc item 0))
                 limit)))
-  (seed [_ sd]
-    (LUCache. sd
+  (seed [_ base]
+    (LUCache. base
               (into {} (for [x (range (- limit) 0)] [x x]))
               limit))
   
@@ -179,7 +179,7 @@
   (has? [_ item])
   (hit [_ item])
   (miss [_ item result])
-  (seed [_ sd])
+  (seed [_ base])
   
   ;; TODO toString
   )
@@ -195,8 +195,8 @@
     (PluggableMemoization. f (miss cache item result)))
   (lookup [_ item]
     (lookup cache item))
-  (seed [_ sd]
-    (PluggableMemoization. f (seed cache sd)))
+  (seed [_ base]
+    (PluggableMemoization. f (seed cache base)))
   Object
   (toString [_] (str cache)))
 
@@ -205,18 +205,18 @@
 
 (defn- basic-cache-factory
   ""
-  [f sd]
-  (PluggableMemoization. f (BasicCache. sd)))
+  [f base]
+  (PluggableMemoization. f (BasicCache. base)))
 
 (defn- fifo-cache-factory
   ""
-  [f limit sd]
-  (PluggableMemoization. f (seed (FIFOCache. {} clojure.lang.PersistentQueue/EMPTY limit) sd)))
+  [f limit base]
+  (PluggableMemoization. f (seed (FIFOCache. {} clojure.lang.PersistentQueue/EMPTY limit) base)))
 
 (defn- lru-cache-factory
   ""
-  [f limit sd]
-  (PluggableMemoization. f (seed (LRUCache. {} {} 0 limit) sd)))
+  [f limit base]
+  (PluggableMemoization. f (seed (LRUCache. {} {} 0 limit) base)))
 
 (defn- ttl-cache-factory
   ""
@@ -225,8 +225,8 @@
 
 (defn- lu-cache-factory
   ""
-  [f limit sd]
-  (PluggableMemoization. f (seed (LUCache. {} {} limit) sd)))
+  [f limit base]
+  (PluggableMemoization. f (seed (LUCache. {} {} limit) base)))
 
 
 ;; # Auxilliary functions
@@ -281,12 +281,12 @@
        ;=> :omg
 
    With great power comes ... yadda yadda yadda."
-  [f sd]
+  [f base]
   (when-let [cache (cache-id f)]
     (swap! cache
            (constantly (seed @cache
                              (into {}
-                                   (for [[k v] sd]
+                                   (for [[k v] base]
                                      [k (reify
                                           clojure.lang.IDeref
                                           (deref [this] v))])))))))
@@ -353,29 +353,29 @@
    **F**irst **I**n **F**irst **O**ut behavior."
   ([f] (memo-fifo f 5 {}))
   ([f limit] (memo-fifo f limit {}))
-  ([f limit sd]
+  ([f limit base]
      (build-memoizer
        fifo-cache-factory
        f
        limit
-       sd)))
+       base)))
 
 (defn memo-lru
   ""
   ([f] (memo-lru f 5))
   ([f limit] (memo-lru f limit {}))
-  ([f limit sd]
+  ([f limit base]
      (build-memoizer
        lru-cache-factory
        f
        limit
-       sd)))
+       base)))
 
 (defn memo-ttl
   ""
   ([f] (memo-ttl f 3000 {}))
   ([f limit] (memo-ttl f limit {}))
-  ([f limit sd]
+  ([f limit base]
      (build-memoizer
        ttl-cache-factory
        f
@@ -385,9 +385,9 @@
   ""
   ([f] (memo-lu f 5))
   ([f limit] (memo-lu f limit {}))
-  ([f limit sd]
+  ([f limit base]
      (build-memoizer
        lu-cache-factory
        f
        limit
-       sd)))
+       base)))
