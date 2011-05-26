@@ -170,8 +170,9 @@
               (into {} (for [x (range (- limit) 0)] [x x]))
               limit))
   
-  ;; TODO toString
-  )
+  Object
+  (toString [_]
+    (str cache \, \space lu \, \space limit)))
 
 (deftype SoftCache [cache]
   CacheProtocol
@@ -189,8 +190,10 @@
 
 (deftype PluggableMemoization [f cache]
   CacheProtocol
-  (has? [_ item] (has? cache item))
-  (hit  [this item] this)
+  (has? [_ item]
+    (has? cache item))
+  (hit  [_ item]
+    (PluggableMemoization. f (hit cache item)))
   (miss [_ item result]
     (PluggableMemoization. f (miss cache item result)))
   (lookup [_ item]
