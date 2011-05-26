@@ -152,13 +152,23 @@
                (:limit state))))
 
 
-(deftype LUCache [cache lu]
+(deftype LUCache [cache lu limit]
   CacheProtocol
-  (lookup [_ item])
-  (has? [_ item])
-  (hit [_ item])
-  (miss [_ item result])
-  (seed [_ sd])
+  (lookup [_ item]
+    (get cache item))
+  (has? [_ item]
+    (contains? cache item))
+  (hit [_ item]
+    (LUCache. cache (update-in lu [item] inc) limit))
+  (miss [_ item result]
+    (let [k (apply min-key lu (keys lu))]
+      (LUCache. (-> cache (dissoc k) (assoc item result))
+                (-> lu (dissoc k) (assoc item 0))
+                limit)))
+  (seed [_ sd]
+    (LUCache. sd
+              (into {} (for [x (range (- limit) 0)] [x x]))
+              limit))
   
   ;; TODO toString
   )
@@ -212,6 +222,11 @@
   ""
   [f limit]
   (PluggableMemoization. f (TTLCache. {} {} limit)))
+
+(defn- lu-cache-factory
+  ""
+  [f limit sd]
+  (PluggableMemoization. f (seed (LUCache. {} {} limit) sd)))
 
 
 ;; # Auxilliary functions
@@ -365,3 +380,14 @@
        ttl-cache-factory
        f
        limit)))
+
+(defn memo-lu
+  ""
+  ([f] (memo-lu f 5))
+  ([f limit] (memo-lu f limit {}))
+  ([f limit sd]
+     (build-memoizer
+       lu-cache-factory
+       f
+       limit
+       sd)))
