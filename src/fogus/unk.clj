@@ -179,16 +179,20 @@
   CacheProtocol
   (lookup [_ item]
     (loop [r   (get cache item)
-           val (.get r)]
+           val (.get @r)]
       (clojure.lang.Util/clearCache rq cache)
-      (if (.isEnqueued r)
-        (recur r (.get r))
+      (if (.isEnqueued @r)
+        (recur r (.get @r))
         val)))
   (has? [_ item]
     (contains? cache item))
   (hit [this item] this)
   (miss [_ item result]
-    (SoftCache. (assoc cache item (java.lang.ref.SoftReference. result rq)) rq))
+    (SoftCache. (doto cache (.put item (reify
+                                         clojure.lang.IDeref
+                                         (deref [_]
+                                           (java.lang.ref.SoftReference. result rq)))))
+                rq))
   (seed [_ base]
     (SoftCache. base rq))
   Object
@@ -491,3 +495,11 @@
        f
        limit
        base)))
+
+(defn memo-soft
+  ([f] (memo-soft f {}))
+  ([f seed]
+     (build-memoizer
+       soft-cache-factory
+       f
+       seed)))

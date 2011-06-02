@@ -58,6 +58,9 @@
 (deftest test-memo-lu
   (test-type-transparency #(memo-lu % 10)))
 
+(deftest test-memo-soft
+  (test-type-transparency memo-soft))
+
 (deftest test-memoization-utils
   (let [CACHE_IDENTITY (:unk (meta id))]
     (testing "That an unk-populated function looks correct at its inception"
