@@ -175,16 +175,24 @@
   (toString [_]
     (str cache \, \space lu \, \space limit)))
 
-(deftype SoftCache [cache]
+(deftype SoftCache [cache rq]
   CacheProtocol
-  (lookup [_ item])
-  (has? [_ item])
-  (hit [_ item])
-  (miss [_ item result])
-  (seed [_ base])
-  
-  ;; TODO toString
-  )
+  (lookup [_ item]
+    (loop [r   (get cache item)
+           val (.get r)]
+      (clojure.lang.Util/clearCache rq cache)
+      (if (.isEnqueued r)
+        (recur r (.get r))
+        val)))
+  (has? [_ item]
+    (contains? cache item))
+  (hit [this item] this)
+  (miss [_ item result]
+    (SoftCache. (assoc cache item (java.lang.ref.SoftReference. result rq)) rq))
+  (seed [_ base]
+    (SoftCache. base rq))
+  Object
+  (toString [_] (str cache)))
 
 
 ;; # Plugging framework
@@ -249,6 +257,14 @@
          (number? limit) (< 0 limit)
          (map? base)]}
   (PluggableMemoization. f (seed (LUCache. {} {} limit) base)))
+
+(defn- soft-cache-factory
+  "Returns a pluggable soft cache initialied to `base`"
+  [f base]
+  {:pre [(fn? f) (map? base)]}
+  (let [m  (java.util.concurrent.ConcurrentHashMap. base)
+        rq (java.lang.ref.ReferenceQueue.)]
+    (PluggableMemoization. f (SoftCache. m rq))))
 
 
 ;; # Auxilliary functions
