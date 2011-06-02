@@ -10,6 +10,7 @@
 ; distribution.  By using this software in any fashion, you are
 ; agreeing to be bound by the terms of this license.  You must not
 ; remove this notice, or any other, from this software.
+
 (ns fogus.unk
   "unk is a memoization library offering functionality above Clojure's core `memoize`
    function in the following ways:
@@ -207,34 +208,55 @@
 ;; # Factories
 
 (defn- basic-cache-factory
-  ""
+  "Returns a pluggable basic cache initialied to `base`"
   [f base]
+  {:pre [(fn? f) (map? base)]}
   (PluggableMemoization. f (BasicCache. base)))
 
 (defn- fifo-cache-factory
-  ""
+  "Returns a pluggable FIFO cache with the cache and FIFO queue initialied to `base` --
+   the queue is filled as the values are pulled out of `seq`. (maybe this should be
+   randomized?)"
   [f limit base]
+  {:pre [(fn? f)
+         (number? limit) (< 0 limit)
+         (map? base)]}
   (PluggableMemoization. f (seed (FIFOCache. {} clojure.lang.PersistentQueue/EMPTY limit) base)))
 
 (defn- lru-cache-factory
-  ""
+  "Returns a pluggable LRU cache with the cache and usage-table initialied to `base` --
+   each entry is initialized with the same usage value. (maybe this should be
+   randomized?)"
   [f limit base]
+  {:pre [(fn? f)
+         (number? limit) (< 0 limit)
+         (map? base)]}
   (PluggableMemoization. f (seed (LRUCache. {} {} 0 limit) base)))
 
 (defn- ttl-cache-factory
-  ""
-  [f limit]
-  (PluggableMemoization. f (TTLCache. {} {} limit)))
+  "Returns a pluggable TTL cache with the cache and expiration-table initialied to `base` --
+   each with the same time-to-live."
+  [f ttl base]
+  {:pre [(fn? f)
+         (number? ttl) (< 0 ttl)
+         (map? base)]}
+  (PluggableMemoization. f (TTLCache. base {} ttl)))
 
 (defn- lu-cache-factory
-  ""
+  "Returns a pluggable LU cache with the cache and usage-table initialied to `base`."
   [f limit base]
+  {:pre [(fn? f)
+         (number? limit) (< 0 limit)
+         (map? base)]}
   (PluggableMemoization. f (seed (LUCache. {} {} limit) base)))
 
 
 ;; # Auxilliary functions
 
-(defn- through [cache f item]
+(defn- through
+  "The basic hit/miss logic for the cache system.  Clojure delays are used
+   to hold the cache value."
+  [cache f item]
   (if (has? cache item)
     (hit cache item)
     (miss cache item (delay (apply f item)))))
@@ -301,6 +323,10 @@
 ;; # Public memoization API
 
 (defn build-memoizer
+  "Builds a function that given a function, returns a pluggable memoized
+   version of it.  `build-memoizer` Takes a cache factory function and the
+   arguments that it takes.  At least one of those functions should be the
+   function to be memoized."
   ([cache-factory f & args]
      (let [cache (atom (apply cache-factory f args))]
        (with-meta
@@ -352,9 +378,9 @@
     (snapshot id)
     ;=> {[44] 44, [43] 43}
 
-   That is, the oldest entry is pushed out of the memoization cache.  This is the standard
+   That is, the oldest entry `42` is pushed out of the memoization cache.  This is the standard
    **F**irst **I**n **F**irst **O**ut behavior."
-  ([f] (memo-fifo f 5 {}))
+  ([f] (memo-fifo f 32 {}))
   ([f limit] (memo-fifo f limit {}))
   ([f limit base]
      (build-memoizer
@@ -364,8 +390,35 @@
        base)))
 
 (defn memo-lru
-  ""
-  ([f] (memo-lru f 5))
+  "Works the same as the basic memoization function (i.e. `memo` and `core.memoize` except
+   when a given threshold is breached.  Observe the following:
+
+    (def id (memo-lru identity 2))
+    
+    (id 42)
+    (id 43)
+    (snapshot id)
+    ;=> {[42] 42, [43] 43}
+    
+   At this point the cache has not yet crossed the set threshold of `2`, but if you execute
+   yet another call the story will change:
+
+    (id 44)
+    (snapshot id)
+    ;=> {[44] 44, [43] 43}
+
+   At this point the operation of the LRU cache looks exactly the same at the FIFO cache.
+   However, the difference becomes apparent on further use:
+
+    (id 43)
+    (id 0)
+    (snapshot id)
+    ;=> {[0] 0, [43] 43}
+
+   As you see, once again calling `id` with the argument `43` will expose the LRU nature
+   of the underlying cache.  That is, when the threshold is passed, the cache will expel
+   the **L**east **R**ecently **U**sed element in favor of the new."
+  ([f] (memo-lru f 32))
   ([f limit] (memo-lru f limit {}))
   ([f limit base]
      (build-memoizer
@@ -375,18 +428,46 @@
        base)))
 
 (defn memo-ttl
-  ""
+  "Unlike many of the other unk memoization functions, `memo-ttl`'s cache policy is time-based
+   rather than algortihmic or explicit.  When memoizing a function using `memo-ttl` you should
+   should provide a **T**ime **T**o **L**ive parameter in milliseconds.
+
+    (def id (memo-ttl identity 5000))
+
+    (id 42)
+    (snapshot id)
+    ;=> {[42] 42}
+
+    ... wait 5 seconds ...
+    (id 43)
+    (snapshot id)
+    ;=> {[43] 43}
+
+   The expired cache entries will be removed on each cache miss."
   ([f] (memo-ttl f 3000 {}))
   ([f limit] (memo-ttl f limit {}))
   ([f limit base]
      (build-memoizer
        ttl-cache-factory
        f
-       limit)))
+       limit
+       {})))
 
 (defn memo-lu
-  ""
-  ([f] (memo-lu f 5))
+  "Similar to the implementation of memo-lru, except that this function removes all cache
+   values whose usage value is smallest.
+
+    (def id (memo-lu identity 3))
+
+    (id 42)
+    (id 42)
+    (id 43)
+    (id 44)
+    (snapshot id)
+    ;=> {[44] 44, [42] 42}
+
+   The **L**east **U**sed values are cleared on cache misses."
+  ([f] (memo-lu f 32))
   ([f limit] (memo-lu f limit {}))
   ([f limit base]
      (build-memoizer
