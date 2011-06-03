@@ -344,9 +344,9 @@
 
 (defn build-memoizer
   "Builds a function that given a function, returns a pluggable memoized
-   version of it.  `build-memoizer` Takes a cache factory function and the
-   arguments that it takes.  At least one of those functions should be the
-   function to be memoized."
+   version of it.  `build-memoizer` Takes a cache factory function, a function
+   to memoize, and the arguments to the factory.  At least one of those
+   functions should be the function to be memoized."
   ([cache-factory f & args]
      (let [cache (atom (apply cache-factory f args))]
        (with-meta
