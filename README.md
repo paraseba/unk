@@ -8,15 +8,16 @@ A pluggable, manipulable memoization framework for Clojure.
 - manipulable memoization
 - a `memo` function to replace `core.memoize`
 - a fifo memoization strategy
+- lru memoization
+- soft references memoization
+- expiry memoization
 
 # todo
 
 - swappable memoization strategies
-- lru memoization
-- soft references memoization
-- expiry memoization
 - more docs and examples
 - cache profiling
+- code cleanup
 
 # credits
 
