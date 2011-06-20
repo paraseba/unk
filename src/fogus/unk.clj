@@ -497,7 +497,7 @@
        base)))
 
 (defn memo-soft
-  "Buggy, do not use yet."
+  "Not fully tested and likely buggy, use at your peril."
   ([f] (memo-soft f {}))
   ([f seed]
      (build-memoizer

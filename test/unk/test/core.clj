@@ -41,11 +41,11 @@
     (testing "that when the limit threshold is not breached, the cache works like the basic version"
       (are [x y] =
            42                 (mine 42)
-           {[42] 42})         (snapshot mine)
+           {[42] 42}         (snapshot mine)
            43                 (mine 43)
            {[42] 42, [43] 43} (snapshot mine)
            42                 (mine 42)
-           {[42] 42, [43] 43} (snapshot mine))
+           {[42] 42, [43] 43} (snapshot mine)))
     (testing "that when the limit is breached, the oldest value is dropped"
       (are [x y] =
            44                 (mine 44)
