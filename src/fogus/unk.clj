@@ -384,19 +384,19 @@
   "Works the same as the basic memoization function (i.e. `memo` and `core.memoize` except
    when a given threshold is breached.  Observe the following:
 
-    (def id (memo-fifo identity 2))
-    
-    (id 42)
-    (id 43)
-    (snapshot id)
-    ;=> {[42] 42, [43] 43}
+       (def id (memo-fifo identity 2))
+       
+       (id 42)
+       (id 43)
+       (snapshot id)
+       ;=> {[42] 42, [43] 43}
 
    As you see, the limit of `2` has not been breached yet, but if you call again with another
    value, then it will:
 
-    (id 44)
-    (snapshot id)
-    ;=> {[44] 44, [43] 43}
+       (id 44)
+       (snapshot id)
+       ;=> {[44] 44, [43] 43}
 
    That is, the oldest entry `42` is pushed out of the memoization cache.  This is the standard
    **F**irst **I**n **F**irst **O**ut behavior."
@@ -413,27 +413,27 @@
   "Works the same as the basic memoization function (i.e. `memo` and `core.memoize` except
    when a given threshold is breached.  Observe the following:
 
-    (def id (memo-lru identity 2))
-    
-    (id 42)
-    (id 43)
-    (snapshot id)
-    ;=> {[42] 42, [43] 43}
+       (def id (memo-lru identity 2))
+       
+       (id 42)
+       (id 43)
+       (snapshot id)
+       ;=> {[42] 42, [43] 43}
     
    At this point the cache has not yet crossed the set threshold of `2`, but if you execute
    yet another call the story will change:
 
-    (id 44)
-    (snapshot id)
-    ;=> {[44] 44, [43] 43}
+       (id 44)
+       (snapshot id)
+       ;=> {[44] 44, [43] 43}
 
    At this point the operation of the LRU cache looks exactly the same at the FIFO cache.
    However, the difference becomes apparent on further use:
 
-    (id 43)
-    (id 0)
-    (snapshot id)
-    ;=> {[0] 0, [43] 43}
+       (id 43)
+       (id 0)
+       (snapshot id)
+       ;=> {[0] 0, [43] 43}
 
    As you see, once again calling `id` with the argument `43` will expose the LRU nature
    of the underlying cache.  That is, when the threshold is passed, the cache will expel
@@ -452,16 +452,16 @@
    rather than algortihmic or explicit.  When memoizing a function using `memo-ttl` you should
    should provide a **T**ime **T**o **L**ive parameter in milliseconds.
 
-    (def id (memo-ttl identity 5000))
-
-    (id 42)
-    (snapshot id)
-    ;=> {[42] 42}
-
-    ... wait 5 seconds ...
-    (id 43)
-    (snapshot id)
-    ;=> {[43] 43}
+       (def id (memo-ttl identity 5000))
+   
+       (id 42)
+       (snapshot id)
+       ;=> {[42] 42}
+   
+       ... wait 5 seconds ...
+       (id 43)
+       (snapshot id)
+       ;=> {[43] 43}
 
    The expired cache entries will be removed on each cache miss."
   ([f] (memo-ttl f 3000 {}))
@@ -477,14 +477,14 @@
   "Similar to the implementation of memo-lru, except that this function removes all cache
    values whose usage value is smallest.
 
-    (def id (memo-lu identity 3))
-
-    (id 42)
-    (id 42)
-    (id 43)
-    (id 44)
-    (snapshot id)
-    ;=> {[44] 44, [42] 42}
+       (def id (memo-lu identity 3))
+   
+       (id 42)
+       (id 42)
+       (id 43)
+       (id 44)
+       (snapshot id)
+       ;=> {[44] 44, [42] 42}
 
    The **L**east **U**sed values are cleared on cache misses."
   ([f] (memo-lu f 32))

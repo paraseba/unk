@@ -15,6 +15,9 @@ A pluggable, manipulable memoization framework for Clojure.
 # todo
 
 - swappable memoization strategies
+- composable strategies (via map interfaces)
+- pass-through cache
+- [LIRS](http://citeseer.ist.psu.edu/viewdoc/summary?doi=10.1.1.116.2184)  
 - more docs and examples
 - cache profiling
 - code cleanup
