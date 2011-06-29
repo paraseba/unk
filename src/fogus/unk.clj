@@ -13,20 +13,17 @@
 
 (ns fogus.unk
   "unk is a memoization library offering functionality above Clojure's core `memoize`
-   function in the following ways:
+  function in the following ways:
 
-   - Pluggable memoization
-   - Manipulable memoization cache
+  **Pluggable memoization**
 
-   ## Pluggable memoization
+  unk allows for different back-end cache implmentations to be used as appropriate without
+  changing the memoization modus operandi.
 
-   unk allows for different back-end cache implmentations to be used as appropriate without
-   changing the memoization modus operandi.
+  **Manipulable memoization**
 
-   ## Manipulable memoization
-
-   Because unk allows you to access a function's memoization store, you do interesting things like
-   clear it, modify it, and save it for later.
+  Because unk allows you to access a function's memoization store, you do interesting things like
+  clear it, modify it, and save it for later.
   "
   {:author "fogus"}
 
@@ -39,7 +36,7 @@
   (:import [fogus.clache TTLCache])
   (:import [fogus.clache SoftCache]))
 
-;; # Plugging framework
+;; Plugging Interface
 
 (deftype PluggableMemoization [f cache]
   CacheProtocol
@@ -55,9 +52,6 @@
     (PluggableMemoization. f (fogus.clache/seed cache base)))
   Object
   (toString [_] (str cache)))
-
-
-;; # Factories
 
 (defn- basic-cache-factory
   "Returns a pluggable basic cache initialied to `base`"
