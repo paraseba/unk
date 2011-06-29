@@ -1,11 +1,6 @@
 (ns unk.test.core
   (:use [fogus.unk] :reload-all)
-  (:use [clojure.test])
-  (:import [fogus.unk BasicCache]))
-
-(deftest test-basic-cache-lookup
-  (testing "that the BasicCache can lookup as expected"
-    (is (= :robot (lookup (miss (BasicCache. {}) '(servo) :robot) '(servo))))))
+  (:use [clojure.test]))
 
 (def id (memo identity))
 

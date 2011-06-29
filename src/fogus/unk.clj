@@ -28,191 +28,31 @@
    Because unk allows you to access a function's memoization store, you do interesting things like
    clear it, modify it, and save it for later.
   "
-  {:author "fogus"})
+  {:author "fogus"}
 
-;; # Protocols and Types
-
-(defprotocol CacheProtocol
-  "This is the protocol describing the basic cache capability."
-  (lookup  [cache e]
-   "Retrieve the value associated with `e` if it exists")
-  (has?    [cache e]
-   "Checks if the cache contains a value associtaed with `e`")
-  (hit     [cache e]
-   "Is meant to be called if the cache is determined to contain a value
-   associated with `e`")
-  (miss    [cache e ret]
-   "Is meant to be called if the cache is determined to **not** contain a
-   value associated with `e`")
-  (seed    [cache base]
-   "Is used to signal that the cache should be created with a seed.
-   The contract is that said cache should return an instance of its
-   own type."))
-
-(deftype BasicCache [cache]
-  CacheProtocol
-  (lookup [_ item]
-    (get cache item))
-  (has? [_ item]
-    (contains? cache item))
-  (hit [this item] this)
-  (miss [_ item result]
-    (BasicCache. (assoc cache item result)))
-  (seed [_ base]
-    (BasicCache. base))
-  Object
-  (toString [_] (str cache)))
-
-(deftype FIFOCache [cache q limit]
-  CacheProtocol
-  (lookup [_ item]
-    (get cache item))
-  (has? [_ item]
-    (contains? cache item))
-  (hit [this item]
-    this)
-  (miss [_ item result]
-    (let [k (peek q)]
-      (FIFOCache. (-> cache (dissoc k) (assoc item result))
-                  (-> q pop (conj item))
-                  limit)))
-  (seed [_ base]
-    (FIFOCache. base
-                (into clojure.lang.PersistentQueue/EMPTY
-                      (repeat limit :free))
-                limit))
-  Object
-  (toString [_]
-    (str cache \, \space (pr-str q))))
-
-(defmethod print-method clojure.lang.PersistentQueue [q, w]
-  (print-method '<- w)
-  (print-method (seq q) w)
-  (print-method '-< w))
-
-(deftype LRUCache [cache lru tick limit]
-  CacheProtocol
-  (lookup [_ item]
-    (get cache item))
-  (has? [_ item]
-    (contains? cache item))
-  (hit [_ item]
-    (let [tick+ (inc tick)]
-      (LRUCache. cache
-                 (assoc lru item tick+)
-                 tick+
-                 limit)))
-  (miss [_ item result]
-    (let [tick+ (inc tick)
-          k (apply min-key lru (keys lru))]
-      (LRUCache. (-> cache (dissoc k) (assoc item result))
-                 (-> lru (dissoc k) (assoc item tick+))
-                 tick+
-                 limit)))
-  (seed [_ base]
-    (LRUCache. base
-               (into {} (for [x (range (- limit) 0)] [x x]))
-               0
-               limit))
-  Object
-  (toString [_]
-    (str cache \, \space lru \, \space tick \, \space limit)))
-
-(declare dissoc-dead)
-
-(deftype TTLCache [cache ttl limit]
-  CacheProtocol
-  (lookup [_ item]
-    (get cache item))
-  (has? [_ item]
-    (when-let [t (get ttl item)]
-      (< (- (System/currentTimeMillis)
-            t)
-         limit)))
-  (hit [this item] this)
-  (miss [this item result]
-    (let [now  (System/currentTimeMillis)
-          this (dissoc-dead this now)]
-      (TTLCache. (assoc (:cache this) item result)
-                 (assoc (:ttl this) item now)
-                 limit)))
-  (seed [_ base]
-    (TTLCache. {} {} limit))
-  
-  Object
-  (toString [_]
-    (str cache \, \space ttl \, \space limit)))
-
-(defn- dissoc-dead
-  [state now]
-  (let [ks (map key (filter #(> (- now (val %)) (:limit state))
-                            (:ttl state)))
-        dissoc-ks #(apply dissoc % ks)]
-    (TTLCache. (dissoc-ks (:cache state))
-               (dissoc-ks (:ttl state))
-               (:limit state))))
-
-
-(deftype LUCache [cache lu limit]
-  CacheProtocol
-  (lookup [_ item]
-    (get cache item))
-  (has? [_ item]
-    (contains? cache item))
-  (hit [_ item]
-    (LUCache. cache (update-in lu [item] inc) limit))
-  (miss [_ item result]
-    (let [k (apply min-key lu (keys lu))]
-      (LUCache. (-> cache (dissoc k) (assoc item result))
-                (-> lu (dissoc k) (assoc item 0))
-                limit)))
-  (seed [_ base]
-    (LUCache. base
-              (into {} (for [x (range (- limit) 0)] [x x]))
-              limit))
-  
-  Object
-  (toString [_]
-    (str cache \, \space lu \, \space limit)))
-
-(deftype SoftCache [cache rq]
-  CacheProtocol
-  (lookup [_ item]
-    (loop [r   (get cache item)
-           val (.get @r)]
-      (clojure.lang.Util/clearCache rq cache)
-      (if (.isEnqueued @r)
-        (recur r (.get @r))
-        val)))
-  (has? [_ item]
-    (contains? cache item))
-  (hit [this item] this)
-  (miss [_ item result]
-    (SoftCache. (doto cache (.put item (reify
-                                         clojure.lang.IDeref
-                                         (deref [_]
-                                           (java.lang.ref.SoftReference. result rq)))))
-                rq))
-  (seed [_ base]
-    (SoftCache. base rq))
-  Object
-  (toString [_] (str cache)))
-
+  (:require fogus.clache)
+  (:import [fogus.clache CacheProtocol])
+  (:import [fogus.clache BasicCache])
+  (:import [fogus.clache FIFOCache])
+  (:import [fogus.clache LRUCache])
+  (:import [fogus.clache LUCache])
+  (:import [fogus.clache TTLCache])
+  (:import [fogus.clache SoftCache]))
 
 ;; # Plugging framework
 
 (deftype PluggableMemoization [f cache]
   CacheProtocol
   (has? [_ item]
-    (has? cache item))
+    (fogus.clache/has? cache item))
   (hit  [_ item]
-    (PluggableMemoization. f (hit cache item)))
+    (PluggableMemoization. f (fogus.clache/hit cache item)))
   (miss [_ item result]
-    (PluggableMemoization. f (miss cache item result)))
+    (PluggableMemoization. f (fogus.clache/miss cache item result)))
   (lookup [_ item]
-    (lookup cache item))
+    (fogus.clache/lookup cache item))
   (seed [_ base]
-    (PluggableMemoization. f (seed cache base)))
+    (PluggableMemoization. f (fogus.clache/seed cache base)))
   Object
   (toString [_] (str cache)))
 
@@ -233,7 +73,7 @@
   {:pre [(fn? f)
          (number? limit) (< 0 limit)
          (map? base)]}
-  (PluggableMemoization. f (seed (FIFOCache. {} clojure.lang.PersistentQueue/EMPTY limit) base)))
+  (PluggableMemoization. f (fogus.clache/seed (FIFOCache. {} clojure.lang.PersistentQueue/EMPTY limit) base)))
 
 (defn- lru-cache-factory
   "Returns a pluggable LRU cache with the cache and usage-table initialied to `base` --
@@ -243,7 +83,7 @@
   {:pre [(fn? f)
          (number? limit) (< 0 limit)
          (map? base)]}
-  (PluggableMemoization. f (seed (LRUCache. {} {} 0 limit) base)))
+  (PluggableMemoization. f (fogus.clache/seed (LRUCache. {} {} 0 limit) base)))
 
 (defn- ttl-cache-factory
   "Returns a pluggable TTL cache with the cache and expiration-table initialied to `base` --
@@ -260,7 +100,7 @@
   {:pre [(fn? f)
          (number? limit) (< 0 limit)
          (map? base)]}
-  (PluggableMemoization. f (seed (LUCache. {} {} limit) base)))
+  (PluggableMemoization. f (fogus.clache/seed (LUCache. {} {} limit) base)))
 
 (defn- soft-cache-factory
   "Returns a pluggable soft cache initialied to `base`"
@@ -277,9 +117,9 @@
   "The basic hit/miss logic for the cache system.  Clojure delays are used
    to hold the cache value."
   [cache f item]
-  (if (has? cache item)
-    (hit cache item)
-    (miss cache item (delay (apply f item)))))
+  (if (fogus.clache/has? cache item)
+    (fogus.clache/hit cache item)
+    (fogus.clache/miss cache item (delay (apply f item)))))
 
 (def ^{:private true
        :doc "Returns a function's cache identity."}
@@ -313,7 +153,7 @@
    now."
   [f]
   (when-let [cache (cache-id f)]
-    (swap! cache (constantly (seed @cache {})))))
+    (swap! cache (constantly (fogus.clache/seed @cache {})))))
 
 (defn memo-swap!
   "Takes an unk-populated function and a map and replaces the memoization cache
@@ -329,7 +169,7 @@
   [f base]
   (when-let [cache (cache-id f)]
     (swap! cache
-           (constantly (seed @cache
+           (constantly (fogus.clache/seed @cache
                              (into {}
                                    (for [[k v] base]
                                      [k (reify
@@ -352,7 +192,7 @@
        (with-meta
         (fn [& args] 
           (let [cs (swap! cache through f args)]
-            @(lookup cs args)))
+            @(fogus.clache/lookup cs args)))
         {:unk cache
          :unk-orig f}))))
 
