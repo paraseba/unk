@@ -84,7 +84,7 @@
    each with the same time-to-live."
   [f ttl base]
   {:pre [(fn? f)
-         (number? ttl) (< 0 ttl)
+         (number? ttl) (<= 0 ttl)
          (map? base)]}
   (PluggableMemoization. f (TTLCache. base {} ttl)))
 
@@ -99,7 +99,8 @@
 (defn- soft-cache-factory
   "Returns a pluggable soft cache initialied to `base`"
   [f base]
-  {:pre [(fn? f) (map? base)]}
+  {:pre [(fn? f)
+         (map? base)]}
   (let [m  (java.util.concurrent.ConcurrentHashMap. base)
         rq (java.lang.ref.ReferenceQueue.)]
     (PluggableMemoization. f (SoftCache. m rq))))
